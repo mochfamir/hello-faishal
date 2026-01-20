@@ -282,7 +282,16 @@ export default function Page() {
             </BlurFade>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-              {DATA.projects.map((project, id) => (
+              {(DATA.projects as unknown as Array<{
+                title: string;
+                href?: string;
+                description: string;
+                dates: string;
+                technologies: readonly string[];
+                image?: string;
+                video?: string;
+                links?: readonly any[];
+              }>).map((project, id) => (
                 <BlurFade
                   key={project.title}
                   delay={BLUR_FADE_DELAY * 10 + id * 0.05}

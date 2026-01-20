@@ -75,7 +75,7 @@ export const DATA = {
       location: "Jakarta, Indonesia",
       title: "Software Engineer",
       logoUrl: "/starvo.png",
-      start: "2025",
+      start: "May 2025",
       end: "Present",
       description:
         "Develop and maintain scalable EV charging platforms using Golang for backend services and React.js for frontend applications, implement real-time charger communication via OCPP (WebSocket), enable roaming and interoperability through OCPI integrations, design real-time monitoring dashboards for charger status, sessions, and system health, and collaborate cross-functionally to deliver reliable, high-performance EV charging solutions.",
@@ -88,7 +88,7 @@ export const DATA = {
       title: "Fullstack Engineer",
       logoUrl: "/efishery.png",
       start: "June 2020",
-      end: "May 2025",
+      end: "March 2025",
       description:
         "Designed and maintained internal platforms to optimize operational efficiency, including a web application for pricing data management, an inventory system for warehouse stock control, and a CRM with AR/AP functionality and customer segmentation. Developed a PWA for field technicians to streamline daily tasks and rewrote a Node.js codebase in Golang to enhance scalability. Built automation tools, such as a Slack bot for managing Vault (HashiCorp) access and a provisioning system for GSuite, Slack, Vault, VPN, Jira, Confluence, Bitbucket, and internal tools to automate employee onboarding and offboarding.",
     },
