@@ -41,11 +41,14 @@ export const metadata: Metadata = {
   twitter: {
     title: `${DATA.name}`,
     card: "summary_large_image",
+    // Uncomment and add image URL when you have an OG image
+    // images: [`${DATA.url}/og-image.png`],
   },
-  verification: {
-    google: "",
-    yandex: "",
-  },
+  // Uncomment and add verification codes when available
+  // verification: {
+  //   google: "your-google-verification-code",
+  //   yandex: "your-yandex-verification-code",
+  // },
 };
 
 export default function RootLayout({

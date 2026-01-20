@@ -38,115 +38,103 @@ export default function Page() {
   const [currentSection, setCurrentSection] = useState(0);
   const [expandedExperience, setExpandedExperience] = useState("");
 
-  // useEffect(() => {
-  //   let isScrolling = false;
-
-  //   const sections = Array.from(document.querySelectorAll("section"));
-
-  //   const observer = new IntersectionObserver(
-  //     (entries) => {
-  //       const visibleSection = entries.find((entry) => entry.isIntersecting);
-  //       if (visibleSection) {
-  //         setCurrentSection(sections.indexOf((visibleSection as any)?.target));
-  //       }
-  //     },
-  //     { threshold: 0.6 }
-  //   );
-
-  //   sections.forEach((section) => observer.observe(section));
-
-  //   const scrollToSection = (index: number) => {
-  //     if (index >= 0 && index < sections.length) {
-  //       isScrolling = true;
-  //       sections[index].scrollIntoView({ behavior: "smooth" });
-
-  //       setTimeout(() => {
-  //         isScrolling = false;
-  //       }, 600); // Adjust delay based on scroll speed
-  //     }
-  //   };
-
-  //   const handleWheelScroll = (event: WheelEvent) => {
-  //     if (isScrolling) return;
-  //     event.preventDefault();
-
-  //     const direction = event.deltaY > 0 ? 1 : -1;
-  //     scrollToSection(currentSection + direction);
-  //   };
-
-  //   const handleKeyDown = (event: KeyboardEvent) => {
-  //     if (isScrolling) return;
-
-  //     if (event.key === "ArrowDown" || event.key === "PageDown") {
-  //       event.preventDefault();
-  //       scrollToSection(currentSection + 1);
-  //     } else if (event.key === "ArrowUp" || event.key === "PageUp") {
-  //       event.preventDefault();
-  //       scrollToSection(currentSection - 1);
-  //     }
-  //   };
-
-  //   let touchStartY = 0;
-  //   const handleTouchStart = (event: TouchEvent) => {
-  //     touchStartY = event.touches[0].clientY;
-  //   };
-
-  //   const handleTouchMove = (event: TouchEvent) => {
-  //     if (isScrolling) return;
-  //     const touchEndY = event.touches[0].clientY;
-  //     const direction = touchEndY < touchStartY ? 1 : -1;
-  //     if (Math.abs(touchStartY - touchEndY) > 50) {
-  //       scrollToSection(currentSection + direction);
-  //     }
-  //   };
-
-  //   window.addEventListener("wheel", handleWheelScroll, { passive: false });
-  //   window.addEventListener("keydown", handleKeyDown);
-  //   window.addEventListener("touchstart", handleTouchStart);
-  //   window.addEventListener("touchmove", handleTouchMove, { passive: false });
-
-  //   return () => {
-  //     window.removeEventListener("wheel", handleWheelScroll);
-  //     window.removeEventListener("keydown", handleKeyDown);
-  //     window.removeEventListener("touchstart", handleTouchStart);
-  //     window.removeEventListener("touchmove", handleTouchMove);
-  //     observer.disconnect();
-  //   };
-  // }, [currentSection]);
-
   useEffect(() => {
-    let isScrolling = false;
     const sections = document.querySelectorAll("section");
-    let currentIndex = 0;
+    let scrollTimeout: NodeJS.Timeout;
+    let isScrolling = false;
+    let lastScrollTime = 0;
+    const SCROLL_DEBOUNCE = 150; // Debounce time in ms
 
-    const scrollToSection = (index: any) => {
-      if (index >= 0 && index < sections.length) {
-        currentIndex = index;
-        const targetSection = sections[currentIndex];
+    // Use IntersectionObserver to track current section
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+            const sectionId = entry.target.id;
+            const index = Array.from(sections).findIndex(
+              (s) => s.id === sectionId
+            );
+            if (index !== -1) {
+              setCurrentSection(index);
+              history.replaceState(null, "", `#${sectionId}`);
+            }
+          }
+        });
+      },
+      {
+        threshold: [0, 0.5, 1],
+        rootMargin: "-20% 0px -20% 0px",
+      }
+    );
 
-        history.pushState(null, "", `#${targetSection.id}`);
+    sections.forEach((section) => observer.observe(section));
 
-        targetSection.scrollIntoView({ behavior: "smooth" });
+    // Smooth scroll to section on wheel with debouncing
+    const handleWheel = (event: WheelEvent) => {
+      const now = Date.now();
+      
+      // Debounce rapid scroll events
+      if (now - lastScrollTime < SCROLL_DEBOUNCE) {
+        return;
+      }
+      lastScrollTime = now;
 
-        isScrolling = true;
-        setTimeout(() => {
-          isScrolling = false;
-        }, 600);
+      if (isScrolling) return;
+
+      const scrollPosition = window.scrollY + window.innerHeight / 2;
+      const sectionTops = Array.from(sections).map((s) => ({
+        top: s.offsetTop,
+        bottom: s.offsetTop + s.offsetHeight,
+        id: s.id,
+      }));
+
+      // Find current section based on scroll position
+      let currentSectionIndex = 0;
+      for (let i = 0; i < sectionTops.length; i++) {
+        if (
+          scrollPosition >= sectionTops[i].top &&
+          scrollPosition < sectionTops[i].bottom
+        ) {
+          currentSectionIndex = i;
+          break;
+        }
+      }
+
+      const direction = event.deltaY > 0 ? 1 : -1;
+      const nextIndex = currentSectionIndex + direction;
+
+      // Only snap if scrolling to next/prev section and within reasonable bounds
+      if (nextIndex >= 0 && nextIndex < sections.length) {
+        const nextSection = sections[nextIndex];
+        const distanceToNext = Math.abs(
+          scrollPosition - (direction > 0 ? nextSection.offsetTop : sectionTops[currentSectionIndex].top)
+        );
+
+        // Only snap if we're close to the edge or scrolling fast
+        const scrollSpeed = Math.abs(event.deltaY);
+        const shouldSnap = distanceToNext < window.innerHeight * 0.3 || scrollSpeed > 50;
+
+        if (shouldSnap) {
+          event.preventDefault();
+          isScrolling = true;
+
+          nextSection.scrollIntoView({ behavior: "smooth", block: "center" });
+          history.pushState(null, "", `#${nextSection.id}`);
+
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            isScrolling = false;
+          }, 800);
+        }
       }
     };
 
-    const handleScroll = (event: any) => {
-      if (isScrolling) return;
-      event.preventDefault();
-
-      const direction = event.deltaY > 0 ? 1 : -1;
-      scrollToSection(currentIndex + direction);
-    };
-
-    window.addEventListener("wheel", handleScroll, { passive: false });
+    window.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
-      window.removeEventListener("wheel", handleScroll);
+      window.removeEventListener("wheel", handleWheel);
+      observer.disconnect();
+      clearTimeout(scrollTimeout);
     };
   }, []);
 
@@ -155,8 +143,8 @@ export default function Page() {
   }, [currentSection]);
 
   return (
-    <main className="flex flex-col min-h-[100vh] space-y-10 overflow-hidden">
-      <section id="hero" className="h-screen flex items-center justify-center">
+    <main className="flex flex-col min-h-[100vh] space-y-10 overflow-y-auto snap-y snap-mandatory scroll-smooth">
+      <section id="hero" className="h-screen flex items-center justify-center snap-start snap-always">
         <div className="mx-auto w-full space-y-8 flex items-center">
           {/* Responsive layout */}
           <div className="flex flex-col-reverse sm:flex-row items-center gap-8 w-full">
@@ -188,7 +176,7 @@ export default function Page() {
 
       <section
         id="about"
-        className="h-screen flex flex-col items-center justify-center"
+        className="h-screen flex flex-col items-center justify-center snap-start snap-always"
       >
         <BlurFade delay={BLUR_FADE_DELAY * 3}>
           <h2 className="text-xl font-bold">About</h2>
@@ -202,7 +190,7 @@ export default function Page() {
 
       <section
         id="work"
-        className="h-screen flex flex-col items-center justify-center"
+        className="h-screen flex flex-col items-center justify-center snap-start snap-always"
       >
         <div className="flex min-h-0 flex-col gap-y-3 items-center">
           <BlurFade delay={BLUR_FADE_DELAY * 5}>
@@ -224,7 +212,6 @@ export default function Page() {
                 description={work.description}
                 expandedExperience={expandedExperience}
                 setExpandedExperience={(value) => {
-                  console.log(value);
                   setExpandedExperience(value);
                 }}
               />
@@ -233,7 +220,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section id="education" className="h-screen flex flex-col justify-center">
+      <section id="education" className="h-screen flex flex-col justify-center snap-start snap-always">
         <div className="flex min-h-0 flex-col gap-y-3">
           <BlurFade delay={BLUR_FADE_DELAY * 7}>
             <h2 className="text-xl text-center font-bold">Education</h2>
@@ -260,7 +247,7 @@ export default function Page() {
 
       <section
         id="skills"
-        className="h-screen flex flex-col items-center justify-center"
+        className="h-screen flex flex-col items-center justify-center snap-start snap-always"
       >
         <div className="flex flex-col items-center gap-y-6 max-w-4xl">
           <BlurFade delay={0.4}>
@@ -284,9 +271,43 @@ export default function Page() {
         </div>
       </section>
 
+      {DATA.projects && DATA.projects.length > 0 && (
+        <section
+          id="projects"
+          className="min-h-screen flex flex-col items-center justify-center py-10 snap-start snap-always"
+        >
+          <div className="flex flex-col items-center gap-y-6 max-w-6xl w-full px-4">
+            <BlurFade delay={BLUR_FADE_DELAY * 9}>
+              <h2 className="text-xl font-bold tracking-wide">Projects</h2>
+            </BlurFade>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+              {DATA.projects.map((project, id) => (
+                <BlurFade
+                  key={project.title}
+                  delay={BLUR_FADE_DELAY * 10 + id * 0.05}
+                >
+                  <ProjectCard
+                    title={project.title}
+                    href={project.href}
+                    description={project.description}
+                    dates={project.dates}
+                    tags={project.technologies}
+                    link={project.href}
+                    image={project.image}
+                    video={project.video}
+                    links={project.links}
+                  />
+                </BlurFade>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section
         id="contact"
-        className="h-screen flex items-center justify-center"
+        className="h-screen flex items-center justify-center snap-start snap-always"
       >
         <div className="grid items-center justify-center gap-4 px-4 text-center md:px-6 w-full">
           <BlurFade delay={BLUR_FADE_DELAY * 16}>
