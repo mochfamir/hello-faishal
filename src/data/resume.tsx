@@ -26,6 +26,7 @@ export const DATA = {
   ],
   navbar: [
     { href: "/", icon: HomeIcon, label: "Home" },
+    { href: "https://byfaishal.cv", icon: NotebookIcon, label: "Blog" },
   ],
   contact: {
     email: "mochamad13amir@gmail.com",
